@@ -33,6 +33,8 @@ PlasmoidItem {
     property bool hasOpusData: false
     property bool hasTokenError: false
     property bool hasRateLimitError: false
+    property double lastFetchTime: 0
+    readonly property int minFetchIntervalMs: 55000  // just under 1 minute
 
     // Data source for reading credentials file
     Plasma5Support.DataSource {
@@ -82,6 +84,28 @@ PlasmoidItem {
         }
     }
 
+    // Data source for detecting Claude Code version
+    property string claudeVersion: ""
+    property string userAgent: "claude-code/" + Qt.formatDateTime(new Date(), "yyyy.M.d")
+
+    Plasma5Support.DataSource {
+        id: versionReader
+        engine: "executable"
+        connectedSources: []
+
+        onNewData: function(sourceName, data) {
+            var stdout = (data["stdout"] || "").trim()
+            disconnectSource(sourceName)
+            // Output format: "2.1.81 (Claude Code)"
+            var match = stdout.match(/^(\d+\.\d+\.\d+)/)
+            if (match) {
+                root.claudeVersion = match[1]
+                root.userAgent = "claude-code/" + match[1]
+                console.log("Claude Usage: Detected version:", root.claudeVersion)
+            }
+        }
+    }
+
     // Data source for launching claude in terminal
     Plasma5Support.DataSource {
         id: claudeLauncher
@@ -117,7 +141,15 @@ PlasmoidItem {
         }
     }
 
-    function fetchUsageFromApi() {
+    function fetchUsageFromApi(force) {
+        var now = Date.now()
+        if (!force && root.lastFetchTime > 0 && (now - root.lastFetchTime) < root.minFetchIntervalMs) {
+            console.log("Claude Usage: Skipping fetch, too soon since last request")
+            root.isLoading = false
+            return
+        }
+        root.lastFetchTime = now
+
         var url = root.baseUrl
             ? root.baseUrl + "/api/oauth/usage"
             : "https://api.anthropic.com/api/oauth/usage"
@@ -125,7 +157,7 @@ PlasmoidItem {
         var xhr = new XMLHttpRequest()
         xhr.open("GET", url)
         xhr.setRequestHeader("Content-Type", "application/json")
-
+        xhr.setRequestHeader("User-Agent", root.userAgent)
         xhr.setRequestHeader("anthropic-beta", "oauth-2025-04-20")
 
         if (root.baseUrl) {
@@ -190,6 +222,7 @@ PlasmoidItem {
                 } else if (xhr.status === 429) {
                     console.log("Claude Usage: 429 Rate limited")
                     root.hasRateLimitError = true
+                    root.lastFetchTime = 0  // allow retry timer to work
                     root.errorMsg = ""
                 } else {
                     root.errorMsg = i18n.tr("API error") + " (" + xhr.status + ")"
@@ -643,7 +676,7 @@ PlasmoidItem {
 
     Timer {
         id: refreshTimer
-        interval: (Plasmoid.configuration.refreshInterval || 1) * 60000
+        interval: Math.max(Plasmoid.configuration.refreshInterval || 5, 1) * 60000
         running: true
         repeat: true
         onTriggered: loadCredentials()
@@ -677,6 +710,7 @@ PlasmoidItem {
 
     Component.onCompleted: {
         console.log("Claude Usage: Widget loaded")
+        versionReader.connectSource("claude --version 2>/dev/null")
         loadCredentials()
     }
 
