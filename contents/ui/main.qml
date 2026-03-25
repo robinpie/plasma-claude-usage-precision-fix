@@ -33,8 +33,47 @@ PlasmoidItem {
     property bool hasOpusData: false
     property bool hasTokenError: false
     property bool hasRateLimitError: false
+    property int rateLimitRetryCount: 0
     property double lastFetchTime: 0
     readonly property int minFetchIntervalMs: 55000  // just under 1 minute
+
+    // Token watcher - polls credentials file during rate limit to detect token refresh
+    Plasma5Support.DataSource {
+        id: tokenWatcher
+        engine: "executable"
+        connectedSources: []
+
+        onNewData: function(sourceName, data) {
+            var stdout = (data["stdout"] || "").trim()
+            disconnectSource(sourceName)
+            if (stdout.length > 10) {
+                try {
+                    var creds = JSON.parse(stdout)
+                    var newToken = (creds.claudeAiOauth || {}).accessToken || ""
+                    if (newToken && newToken !== root.accessToken) {
+                        console.log("Claude Usage: New token detected! Resetting rate limit state.")
+                        root.accessToken = newToken
+                        root.hasRateLimitError = false
+                        root.rateLimitRetryCount = 0
+                        root.lastFetchTime = 0
+                        fetchUsageFromApi(true)
+                    }
+                } catch (e) {
+                    console.log("Claude Usage: Token watcher parse error:", e)
+                }
+            }
+        }
+    }
+
+    Timer {
+        id: tokenWatchTimer
+        interval: 30000  // check every 30 seconds
+        running: root.hasRateLimitError && !root.baseUrl
+        repeat: true
+        onTriggered: {
+            tokenWatcher.connectSource("cat $HOME/.claude/.credentials.json 2>/dev/null")
+        }
+    }
 
     // Data source for reading credentials file
     Plasma5Support.DataSource {
@@ -199,6 +238,7 @@ PlasmoidItem {
                         root.errorMsg = ""
                         root.hasTokenError = false
                         root.hasRateLimitError = false
+                        root.rateLimitRetryCount = 0
 
                         console.log("Claude Usage: API success - session:", root.sessionUsagePercent, "weekly:", root.weeklyUsagePercent)
                     } catch (e) {
@@ -220,7 +260,8 @@ PlasmoidItem {
                         : i18n.tr("API error") + " (404)"
                     console.log("Claude Usage: 404 Not Found:", url)
                 } else if (xhr.status === 429) {
-                    console.log("Claude Usage: 429 Rate limited")
+                    root.rateLimitRetryCount++
+                    console.log("Claude Usage: 429 Rate limited (retry #" + root.rateLimitRetryCount + ", next in " + root.rateLimitBackoffMs/1000 + "s)")
                     root.hasRateLimitError = true
                     root.lastFetchTime = 0  // allow retry timer to work
                     root.errorMsg = ""
@@ -237,6 +278,7 @@ PlasmoidItem {
     function refresh() {
         root.hasTokenError = false
         root.hasRateLimitError = false
+        root.rateLimitRetryCount = 0
         loadCredentials()
     }
 
@@ -456,7 +498,7 @@ PlasmoidItem {
                     }
 
                     PlasmaComponents.Label {
-                        text: i18n.tr("Auto-retry in 1 min")
+                        text: i18n.tr("Auto-retry in") + " " + Math.round(root.rateLimitBackoffMs / 60000) + " min"
                         font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                         color: Kirigami.Theme.negativeTextColor
                     }
@@ -668,16 +710,22 @@ PlasmoidItem {
 
     Timer {
         id: rateLimitRetryTimer
-        interval: 60000
+        interval: root.rateLimitBackoffMs
         running: root.hasRateLimitError
-        repeat: false
-        onTriggered: refresh()
+        repeat: true
+        onTriggered: {
+            console.log("Claude Usage: Backoff retry, interval:", interval/1000, "s")
+            loadCredentials()
+        }
     }
+
+    // Backoff: 5min, 10min, 15min (capped)
+    readonly property int rateLimitBackoffMs: Math.min((root.rateLimitRetryCount + 1) * 300000, 900000)
 
     Timer {
         id: refreshTimer
         interval: Math.max(Plasmoid.configuration.refreshInterval || 5, 1) * 60000
-        running: true
+        running: !root.hasRateLimitError
         repeat: true
         onTriggered: loadCredentials()
     }
