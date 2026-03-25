@@ -34,8 +34,94 @@ PlasmoidItem {
     property bool hasTokenError: false
     property bool hasRateLimitError: false
     property int rateLimitRetryCount: 0
+    property int rateLimitRetryMs: 0  // from retry-after header
     property double lastFetchTime: 0
+    property double lastSuccessTime: 0
+    property bool isStale: false
     readonly property int minFetchIntervalMs: 55000  // just under 1 minute
+    // Stale threshold: if rate limited, use retry-after + buffer; otherwise 3x refresh interval
+    readonly property int staleThresholdMs: root.hasRateLimitError && root.rateLimitRetryMs > 0
+        ? root.rateLimitRetryMs + 60000
+        : Math.max(Plasmoid.configuration.refreshInterval || 1, 1) * 60000 * 3
+
+    // Cache writer - saves last successful data to file
+    Plasma5Support.DataSource {
+        id: cacheWriter
+        engine: "executable"
+        connectedSources: []
+        onNewData: function(sourceName, data) { disconnectSource(sourceName) }
+    }
+
+    // Cache reader - loads cached data on startup
+    Plasma5Support.DataSource {
+        id: cacheReader
+        engine: "executable"
+        connectedSources: []
+
+        onNewData: function(sourceName, data) {
+            var stdout = (data["stdout"] || "").trim()
+            disconnectSource(sourceName)
+            if (stdout.length > 10) {
+                try {
+                    var cache = JSON.parse(stdout)
+                    var age = Date.now() - (cache.timestamp || 0)
+                    if (age < 86400000) { // less than 24 hours old
+                        root.sessionUsagePercent = cache.session || 0
+                        root.weeklyUsagePercent = cache.weekly || 0
+                        root.sonnetWeeklyPercent = cache.sonnet || 0
+                        root.opusWeeklyPercent = cache.opus || 0
+                        root.hasSonnetData = cache.hasSonnet || false
+                        root.hasOpusData = cache.hasOpus || false
+                        root.planName = cache.plan || ""
+                        root.sessionReset = cache.sessionReset || ""
+                        root.weeklyReset = cache.weeklyReset || ""
+                        root.sessionResetTime = cache.sessionResetTs ? new Date(cache.sessionResetTs) : null
+                        root.weeklyResetTime = cache.weeklyResetTs ? new Date(cache.weeklyResetTs) : null
+                        root.lastSuccessTime = cache.timestamp
+                        root.lastUpdate = Qt.formatTime(new Date(cache.timestamp), "hh:mm:ss") + " *"
+                        root.isStale = age > root.staleThresholdMs
+                        console.log("Claude Usage: Loaded cache, age:", Math.round(age/60000), "min, stale:", root.isStale)
+                    } else {
+                        console.log("Claude Usage: Cache too old, ignoring")
+                    }
+                } catch (e) {
+                    console.log("Claude Usage: Cache parse error:", e)
+                }
+            }
+        }
+    }
+
+    function saveCache() {
+        var cache = {
+            session: root.sessionUsagePercent,
+            weekly: root.weeklyUsagePercent,
+            sonnet: root.sonnetWeeklyPercent,
+            opus: root.opusWeeklyPercent,
+            hasSonnet: root.hasSonnetData,
+            hasOpus: root.hasOpusData,
+            plan: root.planName,
+            sessionReset: root.sessionReset,
+            weeklyReset: root.weeklyReset,
+            sessionResetTs: root.sessionResetTime ? root.sessionResetTime.getTime() : null,
+            weeklyResetTs: root.weeklyResetTime ? root.weeklyResetTime.getTime() : null,
+            timestamp: Date.now()
+        }
+        var json = JSON.stringify(cache)
+        cacheWriter.connectSource("echo '" + json.replace(/'/g, "'\\''") + "' > $HOME/.local/share/claude-usage-cache.json")
+    }
+
+    // Stale checker - updates isStale flag periodically
+    Timer {
+        id: staleTimer
+        interval: 60000
+        running: true
+        repeat: true
+        onTriggered: {
+            if (root.lastSuccessTime > 0) {
+                root.isStale = (Date.now() - root.lastSuccessTime) > root.staleThresholdMs
+            }
+        }
+    }
 
     // Token watcher - polls credentials file during rate limit to detect token refresh
     Plasma5Support.DataSource {
@@ -235,10 +321,14 @@ PlasmoidItem {
                         }
 
                         root.lastUpdate = Qt.formatTime(new Date(), "hh:mm:ss")
+                        root.lastSuccessTime = Date.now()
+                        root.isStale = false
                         root.errorMsg = ""
                         root.hasTokenError = false
                         root.hasRateLimitError = false
                         root.rateLimitRetryCount = 0
+                        root.rateLimitRetryMs = 0
+                        saveCache()
 
                         console.log("Claude Usage: API success - session:", root.sessionUsagePercent, "weekly:", root.weeklyUsagePercent)
                     } catch (e) {
@@ -260,8 +350,12 @@ PlasmoidItem {
                         : i18n.tr("API error") + " (404)"
                     console.log("Claude Usage: 404 Not Found:", url)
                 } else if (xhr.status === 429) {
+                    var retryAfter = parseInt(xhr.getResponseHeader("retry-after") || "0")
+                    if (retryAfter > 0) {
+                        root.rateLimitRetryMs = retryAfter * 1000
+                    }
                     root.rateLimitRetryCount++
-                    console.log("Claude Usage: 429 Rate limited (retry #" + root.rateLimitRetryCount + ", next in " + root.rateLimitBackoffMs/1000 + "s)")
+                    console.log("Claude Usage: 429 Rate limited (retry #" + root.rateLimitRetryCount + ", retry-after: " + retryAfter + "s, waiting: " + root.rateLimitBackoffMs/1000 + "s)")
                     root.hasRateLimitError = true
                     root.lastFetchTime = 0  // allow retry timer to work
                     root.errorMsg = ""
@@ -279,6 +373,7 @@ PlasmoidItem {
         root.hasTokenError = false
         root.hasRateLimitError = false
         root.rateLimitRetryCount = 0
+        root.rateLimitRetryMs = 0
         loadCredentials()
     }
 
@@ -338,7 +433,7 @@ PlasmoidItem {
                 Layout.preferredHeight: 10
                 radius: 5
                 color: getUsageColor(root.sessionUsagePercent)
-                opacity: (root.hasTokenError || root.hasRateLimitError) ? 0.5 : 1.0
+                opacity: (root.hasTokenError || root.hasRateLimitError) ? 0.5 : root.isStale ? 0.6 : 1.0
             }
 
             PlasmaComponents.Label {
@@ -346,13 +441,13 @@ PlasmoidItem {
                 text: Math.round(root.sessionUsagePercent) + "%"
                 font.pixelSize: Kirigami.Theme.defaultFont.pixelSize
                 font.bold: true
-                opacity: (root.hasTokenError || root.hasRateLimitError) ? 0.5 : 1.0
+                opacity: (root.hasTokenError || root.hasRateLimitError) ? 0.5 : root.isStale ? 0.6 : 1.0
             }
 
             PlasmaComponents.Label {
                 visible: root.errorMsg === "" || root.hasTokenError || root.hasRateLimitError
                 text: "|"
-                opacity: (root.hasTokenError || root.hasRateLimitError) ? 0.25 : 0.5
+                opacity: (root.hasTokenError || root.hasRateLimitError) ? 0.25 : root.isStale ? 0.35 : 0.5
                 font.pixelSize: Kirigami.Theme.defaultFont.pixelSize
             }
 
@@ -362,7 +457,7 @@ PlasmoidItem {
                 Layout.preferredHeight: 10
                 radius: 5
                 color: getUsageColor(root.weeklyUsagePercent)
-                opacity: (root.hasTokenError || root.hasRateLimitError) ? 0.5 : 1.0
+                opacity: (root.hasTokenError || root.hasRateLimitError) ? 0.5 : root.isStale ? 0.6 : 1.0
             }
 
             PlasmaComponents.Label {
@@ -370,7 +465,7 @@ PlasmoidItem {
                 text: Math.round(root.weeklyUsagePercent) + "%"
                 font.pixelSize: Kirigami.Theme.defaultFont.pixelSize
                 font.bold: true
-                opacity: (root.hasTokenError || root.hasRateLimitError) ? 0.5 : 1.0
+                opacity: (root.hasTokenError || root.hasRateLimitError) ? 0.5 : root.isStale ? 0.6 : 1.0
             }
 
             // Error text (non-token errors only)
@@ -681,6 +776,17 @@ PlasmoidItem {
                 font.italic: true
             }
 
+            // Rate limit warning
+            PlasmaComponents.Label {
+                visible: (Plasmoid.configuration.refreshInterval || 5) < 5
+                text: "⚠ " + i18n.tr("Values under 5 min may cause rate limiting")
+                font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                color: Kirigami.Theme.neutralTextColor
+                font.italic: true
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+            }
+
             Item { Layout.fillHeight: true }
 
             // Footer
@@ -719,8 +825,10 @@ PlasmoidItem {
         }
     }
 
-    // Backoff: 5min, 10min, 15min (capped)
-    readonly property int rateLimitBackoffMs: Math.min((root.rateLimitRetryCount + 1) * 300000, 900000)
+    // Use retry-after header if available, otherwise fallback to 5min steps (capped at 15min)
+    readonly property int rateLimitBackoffMs: root.rateLimitRetryMs > 0
+        ? root.rateLimitRetryMs + 10000  // retry-after + 10s buffer
+        : Math.min((root.rateLimitRetryCount + 1) * 300000, 900000)
 
     Timer {
         id: refreshTimer
@@ -758,6 +866,7 @@ PlasmoidItem {
 
     Component.onCompleted: {
         console.log("Claude Usage: Widget loaded")
+        cacheReader.connectSource("cat $HOME/.local/share/claude-usage-cache.json 2>/dev/null")
         versionReader.connectSource("claude --version 2>/dev/null")
         loadCredentials()
     }

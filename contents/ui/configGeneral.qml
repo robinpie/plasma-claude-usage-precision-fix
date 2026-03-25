@@ -71,6 +71,14 @@ KCM.SimpleKCM {
             }
         }
 
+        QQC2.Label {
+            visible: cfg_refreshInterval < 5
+            text: "⚠ " + tr("Values under 5 min may cause rate limiting")
+            color: Kirigami.Theme.negativeTextColor
+            font.italic: true
+            Layout.fillWidth: true
+        }
+
         Kirigami.Separator {
             Kirigami.FormData.isSection: true
             Kirigami.FormData.label: tr("Custom API (optional)")

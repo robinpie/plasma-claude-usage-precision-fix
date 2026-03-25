@@ -50,7 +50,8 @@ QtObject {
             "Check base URL and API key in widget settings": "Check base URL and API key in widget settings",
             "API key not configured": "API key not configured",
             "Invalid API key": "Invalid API key",
-            "Endpoint not found": "Endpoint not found"
+            "Endpoint not found": "Endpoint not found",
+            "Values under 5 min may cause rate limiting": "Values under 5 min may cause rate limiting"
         },
         "hu_HU": {
             "Claude Usage": "Claude használat",
@@ -86,7 +87,8 @@ QtObject {
             "Check base URL and API key in widget settings": "Ellenőrizd az alap URL-t és API kulcsot a widget beállításokban",
             "API key not configured": "API kulcs nincs beállítva",
             "Invalid API key": "Érvénytelen API kulcs",
-            "Endpoint not found": "Végpont nem található"
+            "Endpoint not found": "Végpont nem található",
+            "Values under 5 min may cause rate limiting": "5 perc alatti értékek rate limitet okozhatnak"
         },
         "de_DE": {
             "Claude Usage": "Claude Nutzung",
@@ -122,7 +124,8 @@ QtObject {
             "Check base URL and API key in widget settings": "Überprüfen Sie Basis-URL und API-Schlüssel in den Widget-Einstellungen",
             "API key not configured": "API-Schlüssel nicht konfiguriert",
             "Invalid API key": "Ungültiger API-Schlüssel",
-            "Endpoint not found": "Endpunkt nicht gefunden"
+            "Endpoint not found": "Endpunkt nicht gefunden",
+            "Values under 5 min may cause rate limiting": "Werte unter 5 Min können Rate-Limiting verursachen"
         },
         "fr_FR": {
             "Claude Usage": "Utilisation Claude",
@@ -158,7 +161,8 @@ QtObject {
             "Check base URL and API key in widget settings": "Vérifiez l'URL de base et la clé API dans les paramètres",
             "API key not configured": "Clé API non configurée",
             "Invalid API key": "Clé API invalide",
-            "Endpoint not found": "Point d'accès introuvable"
+            "Endpoint not found": "Point d'accès introuvable",
+            "Values under 5 min may cause rate limiting": "Les valeurs inférieures à 5 min peuvent causer un rate limiting"
         },
         "es_ES": {
             "Claude Usage": "Uso de Claude",
@@ -194,7 +198,8 @@ QtObject {
             "Check base URL and API key in widget settings": "Verifica la URL base y la clave API en la configuración del widget",
             "API key not configured": "Clave API no configurada",
             "Invalid API key": "Clave API inválida",
-            "Endpoint not found": "Punto de acceso no encontrado"
+            "Endpoint not found": "Punto de acceso no encontrado",
+            "Values under 5 min may cause rate limiting": "Valores menores a 5 min pueden causar rate limiting"
         },
         "it_IT": {
             "Claude Usage": "Utilizzo Claude",
@@ -230,7 +235,8 @@ QtObject {
             "Check base URL and API key in widget settings": "Controlla URL base e chiave API nelle impostazioni del widget",
             "API key not configured": "Chiave API non configurata",
             "Invalid API key": "Chiave API non valida",
-            "Endpoint not found": "Endpoint non trovato"
+            "Endpoint not found": "Endpoint non trovato",
+            "Values under 5 min may cause rate limiting": "Valori sotto 5 min possono causare rate limiting"
         },
         "pt_BR": {
             "Claude Usage": "Uso do Claude",
@@ -266,7 +272,8 @@ QtObject {
             "Check base URL and API key in widget settings": "Verifique a URL base e a chave API nas configurações do widget",
             "API key not configured": "Chave API não configurada",
             "Invalid API key": "Chave API inválida",
-            "Endpoint not found": "Endpoint não encontrado"
+            "Endpoint not found": "Endpoint não encontrado",
+            "Values under 5 min may cause rate limiting": "Valores abaixo de 5 min podem causar rate limiting"
         },
         "ru_RU": {
             "Claude Usage": "Использование Claude",
@@ -302,7 +309,8 @@ QtObject {
             "Check base URL and API key in widget settings": "Проверьте базовый URL и API ключ в настройках виджета",
             "API key not configured": "API ключ не настроен",
             "Invalid API key": "Неверный API ключ",
-            "Endpoint not found": "Конечная точка не найдена"
+            "Endpoint not found": "Конечная точка не найдена",
+            "Values under 5 min may cause rate limiting": "Значения менее 5 мин могут вызвать ограничение запросов"
         },
         "pl_PL": {
             "Claude Usage": "Użycie Claude",
@@ -338,7 +346,8 @@ QtObject {
             "Check base URL and API key in widget settings": "Sprawdź bazowy URL i klucz API w ustawieniach widgetu",
             "API key not configured": "Klucz API nie skonfigurowany",
             "Invalid API key": "Nieprawidłowy klucz API",
-            "Endpoint not found": "Punkt końcowy nie znaleziony"
+            "Endpoint not found": "Punkt końcowy nie znaleziony",
+            "Values under 5 min may cause rate limiting": "Wartości poniżej 5 min mogą powodować rate limiting"
         },
         "nl_NL": {
             "Claude Usage": "Claude Gebruik",
@@ -374,7 +383,8 @@ QtObject {
             "Check base URL and API key in widget settings": "Controleer basis-URL en API-sleutel in de widgetinstellingen",
             "API key not configured": "API-sleutel niet geconfigureerd",
             "Invalid API key": "Ongeldige API-sleutel",
-            "Endpoint not found": "Eindpunt niet gevonden"
+            "Endpoint not found": "Eindpunt niet gevonden",
+            "Values under 5 min may cause rate limiting": "Waarden onder 5 min kunnen rate limiting veroorzaken"
         },
         "tr_TR": {
             "Claude Usage": "Claude Kullanımı",
@@ -410,7 +420,8 @@ QtObject {
             "Check base URL and API key in widget settings": "Widget ayarlarında temel URL ve API anahtarını kontrol edin",
             "API key not configured": "API anahtarı yapılandırılmadı",
             "Invalid API key": "Geçersiz API anahtarı",
-            "Endpoint not found": "Uç nokta bulunamadı"
+            "Endpoint not found": "Uç nokta bulunamadı",
+            "Values under 5 min may cause rate limiting": "5 dk altındaki değerler rate limiting'e neden olabilir"
         },
         "ja_JP": {
             "Claude Usage": "Claude 使用状況",
@@ -446,7 +457,8 @@ QtObject {
             "Check base URL and API key in widget settings": "ウィジェット設定でベースURLとAPIキーを確認",
             "API key not configured": "APIキー未設定",
             "Invalid API key": "無効なAPIキー",
-            "Endpoint not found": "エンドポイントが見つかりません"
+            "Endpoint not found": "エンドポイントが見つかりません",
+            "Values under 5 min may cause rate limiting": "5分未満の値はレート制限を引き起こす可能性があります"
         },
         "ko_KR": {
             "Claude Usage": "Claude 사용량",
@@ -482,7 +494,8 @@ QtObject {
             "Check base URL and API key in widget settings": "위젯 설정에서 기본 URL과 API 키를 확인하세요",
             "API key not configured": "API 키 미설정",
             "Invalid API key": "잘못된 API 키",
-            "Endpoint not found": "엔드포인트를 찾을 수 없음"
+            "Endpoint not found": "엔드포인트를 찾을 수 없음",
+            "Values under 5 min may cause rate limiting": "5분 미만의 값은 속도 제한을 유발할 수 있습니다"
         },
         "zh_CN": {
             "Claude Usage": "Claude 使用情况",
@@ -518,7 +531,8 @@ QtObject {
             "Check base URL and API key in widget settings": "请在小部件设置中检查基础URL和API密钥",
             "API key not configured": "API密钥未配置",
             "Invalid API key": "无效的API密钥",
-            "Endpoint not found": "端点未找到"
+            "Endpoint not found": "端点未找到",
+            "Values under 5 min may cause rate limiting": "低于5分钟的值可能导致速率限制"
         },
         "zh_TW": {
             "Claude Usage": "Claude 使用狀況",
@@ -554,7 +568,8 @@ QtObject {
             "Check base URL and API key in widget settings": "請在小工具設定中檢查基礎URL和API金鑰",
             "API key not configured": "API金鑰未設定",
             "Invalid API key": "無效的API金鑰",
-            "Endpoint not found": "端點未找到"
+            "Endpoint not found": "端點未找到",
+            "Values under 5 min may cause rate limiting": "低於5分鐘的值可能導致速率限制"
         }
     })
 
